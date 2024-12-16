@@ -1,0 +1,5 @@
+public class Deflate {
+  public static void main(final String[] args) throws Exception {
+    System.in.transferTo(new java.util.zip.DeflaterOutputStream(System.out));
+  }
+}

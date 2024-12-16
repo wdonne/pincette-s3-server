@@ -1,0 +1,98 @@
+package be.re.repo;
+
+import be.re.xml.ExpandedName;
+
+
+
+/**
+ * @author Werner Donn\u00e9
+ */
+
+class ACE
+
+{
+
+  boolean	grant;
+  boolean	invert;
+  boolean	isPrincipal;
+  boolean	isProtected;
+  String	principal;
+  ExpandedName	privilege;
+  String	subject;
+
+
+
+  ACE()
+  {
+  }
+
+
+
+  ACE
+  (
+    String		subject,
+    boolean		grant,
+    boolean		invert,
+    boolean		isPrincipal,
+    boolean		isProtected,
+    String		principal,
+    ExpandedName	privilege
+  )
+  {
+    this.subject = subject;
+    this.grant = grant;
+    this.invert = invert;
+    this.isPrincipal = isPrincipal;
+    this.isProtected = isProtected;
+    this.principal = principal;
+    this.privilege = privilege;
+  }
+
+
+
+  ACE(ACE ace)
+  {
+    this.subject = ace.subject;
+    this.grant = ace.grant;
+    this.invert = ace.invert;
+    this.isPrincipal = ace.isPrincipal;
+    this.isProtected = ace.isProtected;
+    this.principal = ace.principal;
+    this.privilege = ace.privilege;
+  }
+
+
+
+  ACE(ACE ace, String subject)
+  {
+    this(ace);
+    this.subject = subject;
+  }
+
+
+
+  public boolean
+  equals(Object o)
+  {
+    return
+      o instanceof ACE &&
+        ((ACE) o).subject.equals(subject) &&
+        ((ACE) o).grant == grant && ((ACE) o).invert == invert &&
+        ((ACE) o).isPrincipal == isPrincipal &&
+        ((ACE) o).isProtected == isProtected &&
+        ((ACE) o).principal.equals(principal) &&
+        ((ACE) o).privilege.equals(privilege);
+  }
+
+
+
+  public int
+  hashCode()
+  {
+    return
+      subject.hashCode() + principal.hashCode() + privilege.hashCode() +
+        (grant ? 1 : 0) + (invert ? 1 : 0) + (isPrincipal ? 1 : 0) +
+        (isProtected ? 1 : 0);
+  }
+
+} // ACE
