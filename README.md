@@ -8,7 +8,7 @@ The S3 object keys are derived from the URL path. The first segment is mapped to
 
 ## Uploads
 
-These are done with `multipart/form-data` messages. The path in the URL should denote the folder that is used or created. For each body part, the last segment of the `filename` parameter in the `Content-Disposition` header is appended to the folder key.
+These are done with `multipart/form-data` messages using the `POST` method. The path in the URL should denote the folder that is used or created. For each body part, the last segment of the `filename` parameter in the `Content-Disposition` header is appended to the folder key.
 
 ## Metadata
 

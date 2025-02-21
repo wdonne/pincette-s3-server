@@ -6,7 +6,7 @@
 
   <groupId>net.pincette</groupId>
   <artifactId>pincette-s3-server</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <name>pincette-s3-server</name>
   <description>S3 Webserver</description>
   <url>https://github.com/wdonne/pincette-s3-server</url>
@@ -52,32 +52,32 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-common</artifactId>
-      <version>2.5.0</version>
+      <version>2.5.1</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-s3-util</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.1</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-netty-http</artifactId>
-      <version>3.2.3</version>
+      <version>3.2.4</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jwt</artifactId>
-      <version>1.1.0</version>
+      <version>1.1.1</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs</artifactId>
-      <version>3.7.0</version>
+      <version>3.8.0</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs-json</artifactId>
-      <version>1.0.15</version>
+      <version>1.0.17</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
@@ -107,12 +107,12 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
-      <version>2.0.13</version>
+      <version>2.0.16</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.10.3</version>
+      <version>5.11.4</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -145,7 +145,7 @@
       <plugin>
         <groupId>com.google.cloud.tools</groupId>
         <artifactId>jib-maven-plugin</artifactId>
-        <version>3.4.3</version>
+        <version>3.4.4</version>
         <configuration>
           <from>
             <image>gcr.io/distroless/java17-debian12</image>
@@ -169,6 +169,15 @@
           </to>
           <container>
             <mainClass>net.pincette.s3.server.Application</mainClass>
+            <args>
+              <arg>9000</arg>
+            </args>
+            <jvmFlags>
+              <jvmFlag>-XX:+ExitOnOutOfMemoryError</jvmFlag>
+            </jvmFlags>
+            <ports>
+              <port>9000</port>
+            </ports>
             <workingDirectory>/</workingDirectory>
             <user>1000:1000</user>
           </container>

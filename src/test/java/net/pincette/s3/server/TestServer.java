@@ -202,7 +202,7 @@ class TestServer {
   }
 
   private static List<File> files() {
-    return Stream.of("file1.txt", "file2.txt", "file3.pdf", "file4")
+    return Stream.of("file1.txt", "file2.txt", "file3.pdf", "file4", "image.jpg")
         .map(TestServer::copyResource)
         .toList();
   }

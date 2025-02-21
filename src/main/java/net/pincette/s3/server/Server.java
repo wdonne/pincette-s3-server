@@ -396,12 +396,12 @@ public class Server {
   }
 
   private static String key(final String path, final Config config) {
-    final Supplier<String> leading = () -> path.startsWith("/") ? path.substring(1) : path;
     final Supplier<String> trailing = () -> path.endsWith("/") ? "/" : "";
 
-    return isDefault(path, config)
-        ? leading.get()
-        : (tail(getSegments(stripMetadata(path), "/")).collect(joining("/")) + trailing.get());
+    return removeLeadingSlash(
+        isDefault(path, config)
+            ? path
+            : (tail(getSegments(stripMetadata(path), "/")).collect(joining("/")) + trailing.get()));
   }
 
   private static Optional<File> localFile(final HttpRequest request) {
@@ -466,6 +466,10 @@ public class Server {
             .filter(JsonUtil::isObject)
             .map(JsonValue::asJsonObject)
             .get());
+  }
+
+  private static String removeLeadingSlash(final String path) {
+    return path.startsWith("/") ? path.substring(1) : path;
   }
 
   private static String rolesField(final Config config) {
@@ -681,7 +685,7 @@ public class Server {
             filename ->
                 putObject(
                         bucket,
-                        key + (key.endsWith("/") ? "" : "/") + filename,
+                        key + (key.isEmpty() || key.endsWith("/") ? "" : "/") + filename,
                         contentType(headers),
                         contentLength(headers),
                         body)
