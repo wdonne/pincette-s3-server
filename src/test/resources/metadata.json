@@ -1,0 +1,11 @@
+{
+  "test1": "value",
+  "test2": 10,
+  "test3": 1.12,
+  "test4": true,
+  "test5": false,
+  "test6": {
+    "test": "value"
+  },
+  "test7": [1, 2]
+}

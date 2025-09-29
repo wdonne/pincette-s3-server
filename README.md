@@ -4,7 +4,7 @@ With the server you can upload multiple files at the same time with a `multipart
 
 ## Object Keys
 
-The S3 object keys are derived from the URL path. The first segment is mapped to a bucket through the configuration. The remainder of the path will be the object key. Folders should always end with a slash.
+The S3 object keys are derived from the URL path. The first segment is mapped to a bucket through the configuration. The remainder of the path will be the object key. Folders should always end with a slash. A particular object version can be addressed by adding `?versionId=<ID>`.
 
 ## Uploads
 
@@ -15,6 +15,8 @@ These are done with `multipart/form-data` messages using the `POST` method. The 
 If you post a JSON object to an S3 object, it will be used as the user-defined metadata for it. With the `GET` method you can obtain the metadata by adding `;metadata` to the end of the URL path.
 
 A special and optional field in the metadata is `_acl`. It should be an object with the optional fields `read` and `write`, both of which should be arrays of strings. The arrays represent roles for read and write access respectively. If the `_acl` field is present, the bearer token (JWT) should have a claim with a role that matches for the desired operation. The field in the token can be configured. Its value should be an array of strings.
+
+When you get metadata, the read-only field `_versions` is added. Its fields are the version IDs you can use in the URL query parameter `versionId` of a `GET` request. The values are objects with the fields `eTag`, `lastModified`, `latest` and `size`.
 
 ## Configuration
 

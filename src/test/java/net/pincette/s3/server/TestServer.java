@@ -21,6 +21,7 @@ import static net.pincette.io.StreamConnector.copy;
 import static net.pincette.json.Factory.f;
 import static net.pincette.json.Factory.o;
 import static net.pincette.json.Factory.v;
+import static net.pincette.json.JsonUtil.createObjectBuilder;
 import static net.pincette.json.JsonUtil.createValue;
 import static net.pincette.json.JsonUtil.from;
 import static net.pincette.json.JsonUtil.string;
@@ -31,6 +32,7 @@ import static net.pincette.util.Collections.list;
 import static net.pincette.util.Collections.map;
 import static net.pincette.util.MimeType.getContentTypeFromName;
 import static net.pincette.util.Pair.pair;
+import static net.pincette.util.Util.initLogging;
 import static net.pincette.util.Util.tryToDoRethrow;
 import static net.pincette.util.Util.tryToGetRethrow;
 import static net.pincette.util.Util.tryToGetWithRethrow;
@@ -102,6 +104,8 @@ class TestServer {
 
   @BeforeAll
   static void beforeAll() {
+    initLogging();
+
     if (directory.exists()) {
       PathUtil.delete(directory.toPath());
     }
@@ -252,6 +256,13 @@ class TestServer {
     return new String(read("/" + name), US_ASCII);
   }
 
+  private static JsonObject readMetadata() {
+    return from(new String(read("/metadata.json"), UTF_8))
+        .filter(JsonUtil::isObject)
+        .map(JsonValue::asJsonObject)
+        .orElse(null);
+  }
+
   private static HttpRequest.Builder request(final String path, final List<String> roles) {
     return HttpRequest.newBuilder()
         .uri(uri.resolve(path))
@@ -331,11 +342,18 @@ class TestServer {
   @DisplayName("basic")
   void basic() {
     final File file = copyResource("file1.txt");
+    final JsonObject metadata = readMetadata();
     final String path = toPath(file);
     final List<String> roles = list(ROLE);
 
     assertEquals(200, put(file, path, roles));
     checkFile(file, roles);
+    assertEquals(200, setMetadata(path, metadata, roles));
+
+    final Pair<Integer, JsonObject> m = getMetadata(path, roles);
+
+    assertEquals(200, m.first);
+    assertEquals(metadata, createObjectBuilder(m.second).remove("_versions").build());
     deleteAndCheck(file, roles);
   }
 

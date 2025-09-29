@@ -27,6 +27,8 @@ import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERR
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_IMPLEMENTED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static java.lang.Double.parseDouble;
+import static java.lang.Integer.parseInt;
 import static java.lang.Long.parseLong;
 import static java.lang.String.valueOf;
 import static java.net.URLDecoder.decode;
@@ -38,13 +40,18 @@ import static java.util.Arrays.stream;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.joining;
+import static javax.json.JsonValue.FALSE;
+import static javax.json.JsonValue.NULL;
+import static javax.json.JsonValue.TRUE;
 import static net.pincette.config.Util.configValue;
+import static net.pincette.json.JsonUtil.asNumber;
+import static net.pincette.json.JsonUtil.asString;
 import static net.pincette.json.JsonUtil.createObjectBuilder;
 import static net.pincette.json.JsonUtil.createValue;
 import static net.pincette.json.JsonUtil.emptyObject;
-import static net.pincette.json.JsonUtil.from;
 import static net.pincette.json.JsonUtil.getArray;
 import static net.pincette.json.JsonUtil.getValue;
+import static net.pincette.json.JsonUtil.merge;
 import static net.pincette.json.JsonUtil.string;
 import static net.pincette.netty.http.PipelineHandler.handle;
 import static net.pincette.netty.http.Util.getBearerToken;
@@ -60,6 +67,7 @@ import static net.pincette.s3.util.Util.deleteObject;
 import static net.pincette.s3.util.Util.deleteObjectRequest;
 import static net.pincette.s3.util.Util.getObject;
 import static net.pincette.s3.util.Util.headObject;
+import static net.pincette.s3.util.Util.listObjectVersions;
 import static net.pincette.s3.util.Util.putObject;
 import static net.pincette.util.Collections.intersection;
 import static net.pincette.util.Collections.map;
@@ -80,6 +88,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.File;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -115,6 +124,8 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
+import software.amazon.awssdk.services.s3.model.ObjectVersion;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -129,6 +140,7 @@ public class Server {
   private static final String BOUNDARY = "boundary";
   private static final String BUCKETS = "buckets";
   private static final String DEFAULT = "default";
+  private static final String E_TAG = "eTag";
   private static final String FILENAME = "filename";
   private static final String FORM_DATA = "multipart/form-data";
   private static final DateTimeFormatter HTTP_DATE_FORMAT =
@@ -136,12 +148,17 @@ public class Server {
   private static final String JSON = "application/json";
   private static final String JWT_PUBLIC_KEY = "jwtPublicKey";
   private static final String JWT_ROLES_FIELD = "jwtRolesField";
+  private static final String LAST_MODIFIED_FIELD = "lastModified";
+  private static final String LATEST = "latest";
   private static final String LOCAL_PATHS = "localPaths";
   private static final String METADATA = "metadata";
   private static final String NAME = "name";
   private static final String OCTET_STREAM = "application/octet-stream";
   private static final String READ = "read";
   private static final String ROLES = "roles";
+  private static final String SIZE = "size";
+  private static final String VERSIONS = "_versions";
+  private static final String VERSION_ID = "versionId";
   private static final String WRITE = "write";
 
   private final Config config;
@@ -228,6 +245,49 @@ public class Server {
     return emptyResult(response, FORBIDDEN);
   }
 
+  private static JsonObject fromMetadata(final Map<String, String> metadata) {
+    return metadata.entrySet().stream()
+        .reduce(
+            createObjectBuilder(),
+            (b, e) -> b.add(e.getKey(), fromString(e.getValue())),
+            (b1, b2) -> b1)
+        .build();
+  }
+
+  private static JsonObject fromObjectVersion(final ObjectVersion version) {
+    return createObjectBuilder()
+        .add(E_TAG, version.eTag())
+        .add(LAST_MODIFIED_FIELD, version.lastModified().toString())
+        .add(LATEST, version.isLatest())
+        .add(SIZE, version.size())
+        .build();
+  }
+
+  private static JsonObject fromObjectVersions(final List<ObjectVersion> versions) {
+    return createObjectBuilder()
+        .add(
+            VERSIONS,
+            versions.stream()
+                .reduce(
+                    createObjectBuilder(),
+                    (b, v) -> b.add(v.versionId(), fromObjectVersion(v)),
+                    (b1, b2) -> b1))
+        .build();
+  }
+
+  private static JsonValue fromString(final String s) {
+    return Cases.<String, JsonValue>withValue(s)
+        .or(v -> v.equals("null"), v -> NULL)
+        .or(v -> v.equals("false"), v -> FALSE)
+        .or(v -> v.equals("true"), v -> TRUE)
+        .or(net.pincette.util.Util::isInteger, v -> createValue(parseInt(v)))
+        .or(net.pincette.util.Util::isLong, v -> createValue(parseLong(v)))
+        .or(net.pincette.util.Util::isDouble, v -> createValue(parseDouble(v)))
+        .orGet(JsonUtil::from, v -> v)
+        .get()
+        .orElseGet(() -> createValue(s));
+  }
+
   private static CompletionStage<Publisher<ByteBuf>> get(
       final HttpRequest request,
       final HttpResponse response,
@@ -265,31 +325,46 @@ public class Server {
       final String key,
       final Config config) {
     return headObject(bucket, key)
-        .thenApply(resp -> getMetadataResponse(resp, request, response, config));
+        .thenComposeAsync(
+            headResp ->
+                listObjectVersions(bucket, key)
+                    .thenApply(versionsResp -> pair(headResp, versionsResp)))
+        .thenApply(pair -> getMetadataResponse(pair.first, pair.second, request, response, config));
   }
 
   private static Publisher<ByteBuf> getMetadataResponse(
-      final HeadObjectResponse s3Response,
+      final HeadObjectResponse headResponse,
+      final ListObjectVersionsResponse versionsResponse,
       final HttpRequest request,
       final HttpResponse response,
       final Config config) {
-    final HttpResponse resp = setHeaders(response, s3Response);
+    final HttpResponse resp = setHeaders(response, headResponse, true);
     final Supplier<Publisher<ByteBuf>> normal =
         () ->
-            s3Response.sdkHttpResponse().isSuccessful()
-                ? ok(resp, Source.of(wrap(string(toJson(s3Response.metadata())).getBytes(UTF_8))))
-                : emptyResult(resp, status(s3Response));
+            headResponse.sdkHttpResponse().isSuccessful()
+                ? ok(
+                    resp,
+                    Source.of(
+                        wrap(
+                            string(
+                                    merge(
+                                        fromMetadata(headResponse.metadata()),
+                                        fromObjectVersions(versionsResponse.versions())))
+                                .getBytes(UTF_8))))
+                : emptyResult(resp, status(headResponse));
 
     resp.headers().set(CONTENT_TYPE, JSON);
 
-    return isAllowedToRead(getRoles(request, config), toJson(s3Response.metadata()))
+    return isAllowedToRead(getRoles(request, config), fromMetadata(headResponse.metadata()))
         ? normal.get()
         : forbidden(response);
   }
 
   private static GetObjectRequest getObjectRequest(
       final HttpRequest request, final String bucket, final String key) {
-    return setHeaders(request, GetObjectRequest.builder().bucket(bucket).key(key)).build();
+    final GetObjectRequest.Builder builder = GetObjectRequest.builder().bucket(bucket).key(key);
+
+    return setHeaders(request, versionId(request).map(builder::versionId).orElse(builder)).build();
   }
 
   private static Publisher<ByteBuf> getResponse(
@@ -305,7 +380,7 @@ public class Server {
                 ? ok(resp, stream)
                 : emptyResult(resp, status(s3Response));
 
-    return isAllowedToRead(getRoles(request, config), toJson(s3Response.metadata()))
+    return isAllowedToRead(getRoles(request, config), fromMetadata(s3Response.metadata()))
         ? normal.get()
         : forbidden(response);
   }
@@ -344,8 +419,8 @@ public class Server {
     return headObject(bucket, key)
         .thenApply(
             resp ->
-                isAllowedToRead(getRoles(request, config), toJson(resp.metadata()))
-                    ? ok(setHeaders(response, resp))
+                isAllowedToRead(getRoles(request, config), fromMetadata(resp.metadata()))
+                    ? ok(setHeaders(response, resp, false))
                     : forbidden(response));
   }
 
@@ -550,12 +625,14 @@ public class Server {
   }
 
   private static HttpResponse setHeaders(
-      final HttpResponse httpResponse, final HeadObjectResponse s3Response) {
+      final HttpResponse httpResponse,
+      final HeadObjectResponse s3Response,
+      final boolean metadata) {
     return Builder.create(() -> httpResponse)
         .update(
             o -> o.headers().set(LAST_MODIFIED, HTTP_DATE_FORMAT.format(s3Response.lastModified())))
         .updateIf(
-            () -> Optional.of(s3Response.contentLength()).filter(l -> l != -1),
+            () -> Optional.of(s3Response.contentLength()).filter(l -> l != -1 && !metadata),
             (o, v) -> o.headers().set(CONTENT_LENGTH, valueOf(v)))
         .updateIf(() -> ofNullable(s3Response.eTag()), (o, v) -> o.headers().add(ETAG, v))
         .updateIf(
@@ -611,6 +688,17 @@ public class Server {
         response.sdkHttpResponse().statusText().orElse(""));
   }
 
+  private static String stringify(final JsonValue value) {
+    return switch (value.getValueType()) {
+      case FALSE -> "false";
+      case NULL -> "null";
+      case NUMBER -> asNumber(value).toString();
+      case STRING -> asString(value).getString();
+      case TRUE -> "true";
+      default -> string(value, false);
+    };
+  }
+
   private static String stripMetadata(final String path) {
     final int index = path.lastIndexOf(';');
 
@@ -619,23 +707,12 @@ public class Server {
         : path;
   }
 
-  private static JsonObject toJson(final Map<String, String> metadata) {
-    return metadata.entrySet().stream()
-        .map(e -> pair(e.getKey(), toJson(e.getValue())))
-        .reduce(createObjectBuilder(), (b, p) -> b.add(p.first, p.second), (b1, b2) -> b1)
-        .build();
-  }
-
-  private static JsonValue toJson(final String value) {
-    return from(value).map(JsonValue.class::cast).orElseGet(() -> createValue(value));
-  }
-
   private static Map<String, String[]> toLowerCase(final Map<String, String[]> m) {
     return map(m.entrySet().stream().map(e -> pair(e.getKey().toLowerCase(), e.getValue())));
   }
 
   private static Map<String, String> toMetadata(final JsonObject json) {
-    return map(json.entrySet().stream().map(e -> pair(e.getKey(), string(e.getValue()))));
+    return map(json.entrySet().stream().map(e -> pair(e.getKey(), stringify(e.getValue()))));
   }
 
   private static String unquote(final String s) {
@@ -693,6 +770,12 @@ public class Server {
         .orElseGet(() -> completedFuture(false));
   }
 
+  private static Optional<String> versionId(final HttpRequest request) {
+    return ofNullable(new QueryStringDecoder(request.uri()).parameters().get(VERSION_ID))
+        .filter(values -> values.size() == 1)
+        .map(List::getFirst);
+  }
+
   private Optional<String> bucket(final String path) {
     return bucketConfig(path, config).flatMap(c -> configValue(c::getString, NAME));
   }
@@ -743,7 +826,7 @@ public class Server {
         .map(
             pair ->
                 headObject(pair.first, pair.second)
-                    .thenApply(response -> toJson(response.metadata()))
+                    .thenApply(response -> fromMetadata(response.metadata()))
                     .exceptionally(t -> emptyObject()))
         .orElseGet(() -> completedFuture(emptyObject()));
   }

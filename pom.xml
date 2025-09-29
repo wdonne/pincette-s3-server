@@ -6,7 +6,7 @@
 
   <groupId>net.pincette</groupId>
   <artifactId>pincette-s3-server</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
   <name>pincette-s3-server</name>
   <description>S3 Webserver</description>
   <url>https://github.com/wdonne/pincette-s3-server</url>
@@ -37,14 +37,14 @@
   <licenses>
     <license>
       <name>BSD-style</name>
-      <url>http://www.opensource.org/licenses/bsd-license.php</url>
+      <url>https://www.opensource.org/licenses/bsd-license.php</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
 
   <properties>
-    <maven.compiler.target>17</maven.compiler.target>
-    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.source>21</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -52,42 +52,47 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-common</artifactId>
-      <version>2.5.1</version>
+      <version>2.5.5</version>
+    </dependency>
+    <dependency>
+      <groupId>net.pincette</groupId>
+      <artifactId>pincette-json</artifactId>
+      <version>2.3.2</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-s3-util</artifactId>
-      <version>1.0.1</version>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-netty-http</artifactId>
-      <version>3.2.4</version>
+      <version>3.2.13</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-jwt</artifactId>
-      <version>1.1.1</version>
+      <version>1.1.4</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs</artifactId>
-      <version>3.8.0</version>
+      <version>3.11.0</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs-json</artifactId>
-      <version>1.0.17</version>
+      <version>1.0.23</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs-multipart</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.3</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-config-util</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.3</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe</groupId>
@@ -102,17 +107,17 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>2.0.16</version>
+      <version>2.0.17</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
-      <version>2.0.16</version>
+      <version>2.0.17</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>5.11.4</version>
+      <version>5.13.4</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -145,10 +150,10 @@
       <plugin>
         <groupId>com.google.cloud.tools</groupId>
         <artifactId>jib-maven-plugin</artifactId>
-        <version>3.4.4</version>
+        <version>3.4.6</version>
         <configuration>
           <from>
-            <image>gcr.io/distroless/java17-debian12</image>
+            <image>gcr.io/distroless/java21-debian12</image>
             <platforms>
               <platform>
                 <architecture>amd64</architecture>
@@ -179,7 +184,7 @@
               <port>9000</port>
             </ports>
             <workingDirectory>/</workingDirectory>
-            <user>1000:1000</user>
+            <user>11000:11000</user>
           </container>
         </configuration>
       </plugin>
