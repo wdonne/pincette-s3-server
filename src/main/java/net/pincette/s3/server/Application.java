@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 
 public class Application {
   static final Logger LOGGER = getLogger("net.pincette.s3.server");
-  private static final String VERSION = "1.1.2";
+  private static final String VERSION = "1.1.3";
 
   @SuppressWarnings("java:S106") // Not logging
   public static void main(final String[] args) {
