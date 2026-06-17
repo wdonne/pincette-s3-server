@@ -6,7 +6,7 @@
 
   <groupId>net.pincette</groupId>
   <artifactId>pincette-s3-server</artifactId>
-  <version>1.1.5</version>
+  <version>1.1.6</version>
   <name>pincette-s3-server</name>
   <description>S3 Webserver</description>
   <url>https://github.com/wdonne/pincette-s3-server</url>
@@ -67,7 +67,7 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-netty-http</artifactId>
-      <version>3.2.21</version>
+      <version>3.2.22</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
@@ -82,7 +82,7 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs-json</artifactId>
-      <version>1.0.32</version>
+      <version>1.0.33</version>
     </dependency>
     <dependency>
       <groupId>net.pincette</groupId>
@@ -112,7 +112,7 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>6.0.3</version>
+      <version>6.1.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
